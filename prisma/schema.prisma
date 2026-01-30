@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  MEMBER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Gym {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  cnpj        String?  @unique
+  email       String
+  phone       String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?  @map("zip_code")
+  logoUrl     String?  @map("logo_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users         User[]
+  checkIns      CheckIn[]
+  subscriptions Subscription[]
+
+  @@map("gyms")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  gymId         String    @map("gym_id")
+  name          String
+  email         String
+  passwordHash  String    @map("password_hash")
+  cpf           String?   @unique
+  phone         String?
+  birthDate     DateTime? @map("birth_date")
+  avatarUrl     String?   @map("avatar_url")
+  role          Role      @default(MEMBER)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  gym               Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  checkIns          CheckIn[]
+  subscriptions     Subscription[]
+  workouts          Workout[]      @relation("MemberWorkouts")
+  createdWorkouts   Workout[]      @relation("InstructorWorkouts")
+
+  @@unique([email, gymId])
+  @@index([gymId])
+  @@index([email])
+  @@map("users")
+}
+
+model Subscription {
+  id          String             @id @default(uuid())
+  userId      String             @map("user_id")
+  gymId       String             @map("gym_id")
+  planName    String             @map("plan_name")
+  price       Decimal            @db.Decimal(10, 2)
+  startDate   DateTime           @map("start_date")
+  endDate     DateTime           @map("end_date")
+  status      SubscriptionStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym      Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId])
+  @@index([gymId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  subscriptionId String        @map("subscription_id")
+  amount         Decimal       @db.Decimal(10, 2)
+  paymentDate    DateTime?     @map("payment_date")
+  dueDate        DateTime      @map("due_date")
+  status         PaymentStatus @default(PENDING)
+  paymentMethod  String?       @map("payment_method")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("payments")
+}
+
+model CheckIn {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  gymId       String   @map("gym_id")
+  checkedInAt DateTime @default(now()) @map("checked_in_at")
+  validatedAt DateTime? @map("validated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym  Gym  @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([gymId])
+  @@index([checkedInAt])
+  @@map("check_ins")
+}
+
+model Exercise {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  muscleGroup  String   @map("muscle_group")
+  equipment    String?
+  videoUrl     String?  @map("video_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  workoutExercises WorkoutExercise[]
+
+  @@index([muscleGroup])
+  @@map("exercises")
+}
+
+model Workout {
+  id           String    @id @default(uuid())
+  memberId     String    @map("member_id")
+  instructorId String    @map("instructor_id")
+  name         String
+  description  String?
+  startDate    DateTime  @default(now()) @map("start_date")
+  endDate      DateTime? @map("end_date")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  member    User              @relation("MemberWorkouts", fields: [memberId], references: [id], onDelete: Cascade)
+  instructor User             @relation("InstructorWorkouts", fields: [instructorId], references: [id])
+  exercises WorkoutExercise[]
+
+  @@index([memberId])
+  @@index([instructorId])
+  @@index([isActive])
+  @@map("workouts")
+}
+
+model WorkoutExercise {
+  id         String  @id @default(uuid())
+  workoutId  String  @map("workout_id")
+  exerciseId String  @map("exercise_id")
+  sets       Int
+  reps       String
+  restTime   Int?    @map("rest_time")
+  notes      String?
+  order      Int     @default(0)
+
+  workout  Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutId, exerciseId])
+  @@index([workoutId])
+  @@map("workout_exercises")
+}

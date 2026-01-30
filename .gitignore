@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+
+# Prisma
+prisma/migrations/
+src/generated/prisma/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Cookies e sessões
+cookies.txt
+*.cookie
+session.txt
+
+# Arquivos de teste HTTP
+*.http
+*.rest
+
+# Banco de dados local
+*.db
+*.sqlite
+
+# Uploads / temporários
+uploads/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
