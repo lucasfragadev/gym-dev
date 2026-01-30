@@ -45,3 +45,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Colletion for Postman
+Gym-SaaS-API.postman_collection.json

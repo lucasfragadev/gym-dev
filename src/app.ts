@@ -4,7 +4,8 @@ import cookieParser from 'cookie-parser';
 import { errorHandler } from '@/shared/middlewares/error-handler';
 import { healthRouter } from '@/shared/routes/health.routes';
 import { authRouter } from '@/modules/auth/routes/auth.routes';
-
+import { userRouter } from '@/modules/users/routes/user.routes';
+import { checkInRouter } from '@/modules/check-ins/routes/check-in.routes'; // ← ÚNICA LINHA NOVA
 
 export class App {
   public app: Application;
@@ -23,7 +24,7 @@ export class App {
       'http://localhost:3001',
       process.env.FRONTEND_URL,
       // Permitir qualquer IP da rede local em desenvolvimento
-      ...(process.env.NODE_ENV === 'development' 
+      ...(process.env.NODE_ENV === 'development'
         ? [/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/]
         : []
       ),
@@ -32,7 +33,7 @@ export class App {
     this.app.use(
       cors({
         origin: (origin, callback) => {
-          // Permitir requisições sem origin
+          // Permitir requisições sem origin (Postman, curl, etc.)
           if (!origin) return callback(null, true);
 
           // Verificar se origin está na lista ou match regex
@@ -72,7 +73,15 @@ export class App {
   private routes(): void {
     // Rota de health check
     this.app.use('/health', healthRouter);
+    
+    // Rotas de autenticação
     this.app.use('/api/auth', authRouter);
+    
+    // Rotas de usuários
+    this.app.use('/api/users', userRouter);
+    
+    // Rotas de check-ins ← ÚNICA LINHA NOVA
+    this.app.use('/api/check-ins', checkInRouter);
   }
 
   private errorHandling(): void {
