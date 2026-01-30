@@ -1,8 +1,5 @@
 import { User, Role } from '@prisma/client';
 
-/**
- * DTO para criação de usuário (usado internamente pelo repository)
- */
 export interface CreateUserData {
   gymId: string;
   name: string;
@@ -14,9 +11,6 @@ export interface CreateUserData {
   birthDate?: Date;
 }
 
-/**
- * DTO para atualização de usuário
- */
 export interface UpdateUserData {
   name?: string;
   email?: string;
@@ -30,63 +24,57 @@ export interface UpdateUserData {
 }
 
 /**
- * Interface do Repository de Usuários
- * Define o contrato que qualquer implementação deve seguir
+ * Filtros para listagem de usuários
  */
+export interface FindManyUsersFilters {
+  gymId: string;
+  role?: Role;
+  isActive?: boolean;
+  search?: string; // Busca por nome ou email
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Resultado paginado
+ */
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface IUserRepository {
-  /**
-   * Cria um novo usuário
-   */
   create(data: CreateUserData): Promise<User>;
-
-  /**
-   * Busca usuário por ID
-   */
   findById(id: string): Promise<User | null>;
-
-  /**
-   * Busca usuário por email e academia
-   * (email é único por academia, não globalmente)
-   */
   findByEmailAndGymId(email: string, gymId: string): Promise<User | null>;
-
-  /**
-   * Busca usuário por CPF
-   */
   findByCpf(cpf: string): Promise<User | null>;
-
-  /**
-   * Lista todos os usuários de uma academia
-   */
   findManyByGymId(gymId: string): Promise<User[]>;
-
-  /**
-   * Lista usuários por role em uma academia
-   */
   findManyByRoleAndGymId(role: Role, gymId: string): Promise<User[]>;
-
+  
   /**
-   * Atualiza um usuário
+   * Busca paginada com filtros
    */
+  findManyWithFilters(filters: FindManyUsersFilters): Promise<PaginatedResult<User>>;
+  
   update(id: string, data: UpdateUserData): Promise<User>;
-
-  /**
-   * Soft delete (marca como inativo)
-   */
   softDelete(id: string): Promise<User>;
-
+  
   /**
-   * Hard delete (remove permanentemente - use com cuidado!)
+   * Reativar usuário desativado
    */
+  reactivate(id: string): Promise<User>;
+  
   delete(id: string): Promise<void>;
-
-  /**
-   * Verifica se email já existe em uma academia
-   */
   existsByEmailAndGymId(email: string, gymId: string): Promise<boolean>;
-
-  /**
-   * Verifica se CPF já existe
-   */
   existsByCpf(cpf: string): Promise<boolean>;
+  
+  /**
+   * Contar usuários ativos por academia
+   */
+  countActiveByGymId(gymId: string): Promise<number>;
 }

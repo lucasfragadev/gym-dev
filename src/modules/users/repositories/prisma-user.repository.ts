@@ -1,18 +1,14 @@
-import { User, Role } from '@prisma/client';
+import { User, Role, Prisma } from '@prisma/client';
 import { prisma } from '@/config/database';
 import {
   IUserRepository,
   CreateUserData,
   UpdateUserData,
+  FindManyUsersFilters,
+  PaginatedResult,
 } from '../interfaces/user-repository.interface';
 
-/**
- * Implementação do Repository de Usuários usando Prisma ORM
- */
 export class PrismaUserRepository implements IUserRepository {
-  /**
-   * Cria um novo usuário no banco de dados
-   */
   async create(data: CreateUserData): Promise<User> {
     return prisma.user.create({
       data: {
@@ -28,19 +24,12 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  /**
-   * Busca um usuário por ID
-   */
   async findById(id: string): Promise<User | null> {
     return prisma.user.findUnique({
       where: { id },
     });
   }
 
-  /**
-   * Busca um usuário por email dentro de uma academia específica
-   * (email é único por academia, não globalmente)
-   */
   async findByEmailAndGymId(
     email: string,
     gymId: string
@@ -55,23 +44,17 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  /**
-   * Busca um usuário por CPF
-   */
   async findByCpf(cpf: string): Promise<User | null> {
     return prisma.user.findUnique({
       where: { cpf },
     });
   }
 
-  /**
-   * Lista todos os usuários de uma academia
-   */
   async findManyByGymId(gymId: string): Promise<User[]> {
     return prisma.user.findMany({
       where: {
         gymId,
-        isActive: true, // Apenas usuários ativos
+        isActive: true,
       },
       orderBy: {
         name: 'asc',
@@ -79,9 +62,6 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  /**
-   * Lista usuários por role em uma academia
-   */
   async findManyByRoleAndGymId(role: Role, gymId: string): Promise<User[]> {
     return prisma.user.findMany({
       where: {
@@ -96,8 +76,77 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   /**
-   * Atualiza dados de um usuário
+   * Busca paginada com filtros avançados
    */
+  async findManyWithFilters(
+    filters: FindManyUsersFilters
+  ): Promise<PaginatedResult<User>> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // Construir condições de filtro
+    const where: Prisma.UserWhereInput = {
+      gymId: filters.gymId,
+    };
+
+    // Filtro por role
+    if (filters.role) {
+      where.role = filters.role;
+    }
+
+    // Filtro por status (ativo/inativo)
+    if (filters.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+
+    // Busca por nome ou email
+    if (filters.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Executar queries em paralelo
+    const [data, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          cpf: true,
+          phone: true,
+          birthDate: true,
+          avatarUrl: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          gymId: true,
+          // Não retornar passwordHash
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: data as User[],
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async update(id: string, data: UpdateUserData): Promise<User> {
     return prisma.user.update({
       where: { id },
@@ -105,10 +154,6 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  /**
-   * Soft delete: marca o usuário como inativo
-   * (preferível ao delete permanente para manter histórico)
-   */
   async softDelete(id: string): Promise<User> {
     return prisma.user.update({
       where: { id },
@@ -119,18 +164,23 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   /**
-   * Hard delete: remove permanentemente do banco
-   * ⚠️ Use com cuidado! Preferir softDelete
+   * Reativar usuário
    */
+  async reactivate(id: string): Promise<User> {
+    return prisma.user.update({
+      where: { id },
+      data: {
+        isActive: true,
+      },
+    });
+  }
+
   async delete(id: string): Promise<void> {
     await prisma.user.delete({
       where: { id },
     });
   }
 
-  /**
-   * Verifica se já existe um usuário com o email em uma academia
-   */
   async existsByEmailAndGymId(
     email: string,
     gymId: string
@@ -144,13 +194,22 @@ export class PrismaUserRepository implements IUserRepository {
     return count > 0;
   }
 
-  /**
-   * Verifica se já existe um usuário com o CPF
-   */
   async existsByCpf(cpf: string): Promise<boolean> {
     const count = await prisma.user.count({
       where: { cpf },
     });
     return count > 0;
+  }
+
+  /**
+   * Contar usuários ativos
+   */
+  async countActiveByGymId(gymId: string): Promise<number> {
+    return prisma.user.count({
+      where: {
+        gymId,
+        isActive: true,
+      },
+    });
   }
 }

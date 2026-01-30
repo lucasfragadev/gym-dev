@@ -10,6 +10,7 @@
     "test:dto": "tsx -r dotenv/config src/modules/auth/dtos/__tests__/auth.dto.test.ts",
     "test:repository": "tsx -r dotenv/config src/modules/users/repositories/__tests__/prisma-user.repository.test.ts",
     "test:service": "tsx -r dotenv/config src/modules/auth/services/__tests__/auth.service.test.ts",
+    "test:user-service": "tsx -r dotenv/config src/modules/users/services/__tests__/user.service.test.ts",
     "test:middlewares": "tsx -r dotenv/config src/shared/middlewares/__tests__/auth-middlewares.test.ts",
     "test:all": "npm run test:password && npm run test:jwt && npm run test:dto && npm run test:repository && npm run test:service && npm run test:middlewares",
     "build": "tsup src --out-dir dist",
